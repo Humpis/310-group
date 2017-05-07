@@ -65,6 +65,7 @@ def newgame(gameid, X, O):
     games[gameid]['isPlaying'] = True
     games[gameid]['X'] = X
     games[gameid]['O'] = O
+    games[gameid]['X'] = O
 
 
 def move(gameid, move):
@@ -174,27 +175,56 @@ def serve_forever(host, port):
                             sock.sendall(('101#' + name).encode())
                         else:
                             sock.sendall(('401#').encode())
+                    elif info[0] == '130':
+                        if info[2] == '1':
+                            responce = ''
+                            for user in users:
+                                responce += user + ',' + users[user] + ';'
+                            sock.sendall(('131#' + responce).encode())
+                        elif info[2] == '2':
+                            responce = ''
+                            for i, game in enumerate(games):
+                                if game is not None:
+                                    responce += i + ',' + game['X'] + ',' + game['O'] + ';'
+                            sock.sendall(('132#' + responce).encode())
+                    elif info[0] == '199':
+                        found = False
+                        for i, game in enumerate(games):
+                            if game['O'] == info[1] and game['isPlaying']:
+                                found = True
+                                print('213#' + i + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O'])
+                                sock.sendall(('213#' + i + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O']).encode())
+                        if not found:
+                            sock.sendall(('198#').encode())
                     elif info[0] == '200':
-                        if users[info[2]] == 'busy':
+                        if info[0] not in users:
+                            sock.sendall(('408#' + info[1] + '#Invited player does not exist').encode())
+                        elif users[info[2]] == 'busy':
                             sock.sendall(('408#' + info[1] + '#Invited player busy').encode())
-                        gid = -1
-                        for i in range(0, len(games)):
-                            if games[i] is None:
-                                gid = i
-                        if gid != -1:
-                            newgame(gid, info[1], info[2])
-                            game = games[gid]
-                            sock.sendall(('201#' + info[1] + '#' + gid).encode())
-                            print('213#' + gid + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O'])
-                            sock.sendall(('213#' + gid + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O']).encode())
-                            users[info[1]] = 'busy'
-                            users[info[2]] = 'busy'
                         else:
-                            sock.sendall(('408#' + info[1] + '#Out of game slots').encode())
+                            gid = -1
+                            for i in range(0, len(games)):
+                                if games[i] is None:
+                                    gid = i
+                            if gid != -1:
+                                newgame(gid, info[1], info[2])
+                                game = games[gid]
+                                users[info[1]] = 'busy'
+                                users[info[2]] = 'busy'
+                                sock.sendall(('201#' + info[1] + '#' + gid).encode())
+                                print('213#' + gid + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O'])
+                                sock.sendall(('213#' + gid + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O']).encode())
+                            else:
+                                sock.sendall(('408#' + info[1] + '#Out of game slots').encode())
                     elif info[0] == '204':
                         # inform players
                         # close game
                         # close connections
+                        game = games[info[2]]
+                        users[games['X']] = 'availible'
+                        users[games['O']] = 'availible'
+                        game['isPlaying'] = False
+                        # game = None
                         sock.sendall(("205#" + info[1] + '#' + info[2]).encode())
                         sock.close()
                         rlist.remove(sock)
@@ -205,12 +235,27 @@ def serve_forever(host, port):
                             sock.sendall(("211#" + info[1] + '#' + info[3]).encode())
                         elif ret == 1:
                             print('214#' + info[2] + '#' + 'X Won!')
+                            game = games[info[2]]
+                            users[games['X']] = 'availible'
+                            users[games['O']] = 'availible'
+                            game['isPlaying'] = False
+                            # game = None
                             sock.sendall(('214#' + info[2] + '#' + 'X Won!').encode())
                         elif ret == 2:
                             print('2')
+                            game = games[info[2]]
+                            users[games['X']] = 'availible'
+                            users[games['O']] = 'availible'
+                            game['isPlaying'] = False
+                            # game = None
                             sock.sendall(('214#' + info[2] + '#' + 'O Won!').encode())
                         elif ret == 3:
                             print('3')
+                            game = games[info[2]]
+                            users[games['X']] = 'availible'
+                            users[games['O']] = 'availible'
+                            game['isPlaying'] = False
+                            # game = None
                             sock.sendall(('214#' + info[2] + '#' + 'Tie!').encode())
                     elif info[0] == '212':
                         game = games[info[2]]
