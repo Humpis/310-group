@@ -8,6 +8,7 @@ def info_send(socket):
 	#If it cannot send it out, it will assume the connection is closed and exit the
 	#program after displaying an error.
 	global glob_message_send
+	print (glob_message_send)
 	try:
 		socket.send(glob_message_send.encode())
 	except:
@@ -26,7 +27,7 @@ def info_decode(info):
 		glob_message_recv[0] = int(glob_message_recv[0])
 		code = glob_message_recv[0]
 	except:
-		print('Uh oh! The server you are connected too seems to be experiencing an unexpected error')
+		print('Uh oh! The server you are connected too seems to be experiencing an error. Did it shut down?')
 		try:
 			quit_server()
 			exit()
@@ -118,6 +119,31 @@ def display_gamestate(gamestate):
 	print(' ' + board[7] + ' | ' + board[8] + ' | ' + board[9])
 	print('   |   |')
 
+def no_time_recv():
+	global client_socket
+	global glob_uid
+	global glob_message_send
+	
+	client_socket.settimeout(0.0)
+	try:
+		data = client_socket.recv(1024)
+		print (data)
+	except BlockingIOError:
+		print ('IOERR')##DEBUG
+		client_socket.settimeout(None)
+		return -1
+	except:
+		print('Uh oh! The server you are connected too seems to be experiencing an error. Did it shut down?')
+		try:
+			quit_server()
+			exit()
+		except:
+			exit()
+	info_decode(data)
+	client_socket.settimeout(None)
+	print('Return 1')##DEBUG
+	return 1
+	
 def take_input(status):
 	#Waits for player to enter any of the commands supported by the client. Returns a 
 	#struct indicating command executed and its related data. Status indicates the menu
@@ -128,8 +154,26 @@ def take_input(status):
 	
 	global glob_players
 	global glob_games
+	global glob_message_send
+	global glob_message_recv
+	global glob_uid
+	global client_socket
 	
 	while (1):
+		#invite = no_time_recv()
+		#if status == 0:
+		#	if invite == 1:
+		#		code = glob_message_recv[0]
+		#		if code == 201:
+		#			return (5, glob_message_recv[2])
+		
+		if status == 0:
+			glob_message_send = '199#'+glob_uid
+			info_send(client_socket)
+			info = client_socket.recv(1024)
+			code = info_decode(info)
+			if code == 213:
+				return (5,glob_message_recv)
 		uinput = input('# ')
 		if uinput == 'help':
 			print_help()
@@ -144,18 +188,22 @@ def take_input(status):
 					return (1, uinput)
 				except ValueError:
 					print ('Invalid input for place command. Type help to see syntax.')
+					continue
 			else:
 				print ("You currently aren't in a game.")
+				continue
 		if uinput == 'exit':
 			return (2,)
 		if uinput == 'games':
 			if status == 1:
 				print_query(glob_games)
+				continue
 			else:
 				return (3,0)
 		if uinput == 'who':
 			if status == 1:
 				print_query(glob_players)
+				continue
 			else:
 				return (3,1)
 		if uinput.startswith('play '):
@@ -163,11 +211,9 @@ def take_input(status):
 				print ("You can't start another game until you finish this one!")
 				continue
 			else:
-				try:
-					uinput = int(uinput[5:])
-					return (4, uinput)
-				except ValueError:
-					print ('Invalid input for play command. Type help to see syntax.')
+				uinput = uinput[5:]
+				return (4, uinput)
+		print_help()
 
 def play_game(rcv_msg):
 	#The game loop for the tic_tac_toe game. rcv_msg is the first 213 gamestate message
@@ -287,7 +333,7 @@ while (1):
 		print ('Unexpected Issue. Please try again.')
 
 #Main Lobby Loop. This will take user input when user isn't in game. From here
-#user can, quit (uinput[0] == 2), send a query (uinput[0] == 3), or join a 
+#user can: quit (uinput[0] == 2), send a query (uinput[0] == 3), or join a 
 #game (uinput[0] == 4).
 while (1):
 	uinput = take_input(0)
@@ -323,5 +369,8 @@ while (1):
 			play_game(glob_message_recv)
 		else:
 			print ("Game is full or doesn't exist.")
+	if uinput[0] == 5:
+		print('YAY')
+		play_game(uinput[1])
 
 print ('Thats all for now!')
