@@ -7,8 +7,8 @@ import optparse
 
 BACKLOG = 5
 
-games = [{}, {}, {}, {}, {}]
-users = []
+games = [None] * 100
+users = {}
 
 
 def drawBoard(board):
@@ -135,7 +135,7 @@ def serve_forever(host, port):
     while True:
         # block in select
         readables, writables, exceptions = select.select(rlist, wlist, elist)
-
+        # print(readables)
         for sock in readables:
             if sock is lstsock:  # new client connection, we can accept now
                 try:
@@ -170,47 +170,52 @@ def serve_forever(host, port):
                     if info[0] == '100':
                         name = info[1]
                         if name not in users:
-                            users.append(name)
+                            users[name] = 'availible'
                             sock.sendall(('101#' + name).encode())
                         else:
                             sock.sendall(('401#').encode())
                     elif info[0] == '200':
-                        newgame(int(info[2]), info[1], info[1])
-                        sock.sendall(
-                            ('201#' + info[1] + '#' + info[2]).encode())
-                        # print(('213#' + info[2] + '#' + ''.join(games[int(gameid)]['board']) + '#' + info[1]))
-                        # sock.sendall(('213#' + info[2] + '#' +
-                        # ''.join(games[int(gameid)]['board']) + '#' + info[1]
-                        # + '#' + info[1] + '#' + info[1]).encode())
-                        print('213#' + info[2] + '#' + ''.join(games[int(info[2])]['board']) + '#' + games[int(
-                            info[2])]['turnuid'] + '#' + games[int(info[2])]['X'] + '#' + games[int(info[2])]['O'])
-                        sock.sendall(('213#' + info[2] + '#' + ''.join(games[int(info[2])]['board']) + '#' + games[int(
-                            info[2])]['turnuid'] + '#' + games[int(info[2])]['X'] + '#' + games[int(info[2])]['O']).encode())
-
-                        # if eerror send 408
+                        if users[info[2]] == 'busy':
+                            sock.sendall(('408#' + info[1] + '#Invited player busy').encode())
+                        gid = -1
+                        for i in range(0, len(games)):
+                            if games[i] is None:
+                                gid = i
+                        if gid != -1:
+                            newgame(gid, info[1], info[2])
+                            game = games[gid]
+                            sock.sendall(('201#' + info[1] + '#' + gid).encode())
+                            print('213#' + gid + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O'])
+                            sock.sendall(('213#' + gid + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O']).encode())
+                            users[info[1]] = 'busy'
+                            users[info[2]] = 'busy'
+                        else:
+                            sock.sendall(('408#' + info[1] + '#Out of game slots').encode())
+                    elif info[0] == '204':
+                        # inform players
+                        # close game
+                        # close connections
+                        sock.sendall(("205#" + info[1] + '#' + info[2]).encode())
+                        sock.close()
+                        rlist.remove(sock)
                     elif info[0] == '210':
                         ret = move(int(info[2]), info[3])
                         if ret == 0 or ret == -1:
                             print('0 or -1')
-                            sock.sendall(
-                                ("211#" + info[1] + '#' + info[3]).encode())
+                            sock.sendall(("211#" + info[1] + '#' + info[3]).encode())
                         elif ret == 1:
                             print('214#' + info[2] + '#' + 'X Won!')
-                            sock.sendall(
-                                ('214#' + info[2] + '#' + 'X Won!').encode())
+                            sock.sendall(('214#' + info[2] + '#' + 'X Won!').encode())
                         elif ret == 2:
                             print('2')
-                            sock.sendall(
-                                ('214#' + info[2] + '#' + 'O Won!').encode())
+                            sock.sendall(('214#' + info[2] + '#' + 'O Won!').encode())
                         elif ret == 3:
                             print('3')
-                            sock.sendall(
-                                ('214#' + info[2] + '#' + 'Tie!').encode())
+                            sock.sendall(('214#' + info[2] + '#' + 'Tie!').encode())
                     elif info[0] == '212':
-                        print('213#' + info[2] + '#' + ''.join(games[int(info[2])]['board']) + '#' + games[int(
-                            info[2])]['turnuid'] + '#' + games[int(info[2])]['X'] + '#' + games[int(info[2])]['O'])
-                        sock.sendall(('213#' + info[2] + '#' + ''.join(games[int(info[2])]['board']) + '#' + games[int(
-                            info[2])]['turnuid'] + '#' + games[int(info[2])]['X'] + '#' + games[int(info[2])]['O']).encode())
+                        game = games[info[2]]
+                        print('213#' + info[2] + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O'])
+                        sock.sendall(('213#' + info[2] + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O']).encode())
 
                     else:
                         sock.sendall(("Not supported rn").encode())
