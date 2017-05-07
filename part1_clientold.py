@@ -13,7 +13,7 @@ def info_send(socket):
 def info_decode(info):
 	#print info ##DEBUG
 	global glob_message_recv
-	glob_message_recv = info.decode().split('#')
+	glob_message_recv = info.split('#')
 	glob_message_recv[0] = int(glob_message_recv[0])
 	code = glob_message_recv[0]
 	##TODO : Define handling for seperate codes
@@ -54,11 +54,11 @@ glob_username = 'noname'
 try:
 	client_socket.connect((server_name,server_port))
 except:
-	print('Error connecting to server. Is it online?')
+	print 'Error connecting to server. Is it online?'
 	exit()
 while (1):
 	#Grab username from user and send it to the server
-	client_username = input('Enter your username: ')
+	client_username = raw_input('Enter your username: ')
 	glob_message_send = '100#'+ client_username
 	info_send(client_socket)
 	info = client_socket.recv(1024)
@@ -70,17 +70,17 @@ while (1):
 		##TODO: Grab UID and store in global var
 		glob_username = glob_message_recv[1]
 		glob_uid = glob_message_recv[2]
-		print('You are now connected to ' + server_name + ' as ' + glob_username + '(' + glob_uid + ')')
+		print 'You are now connected to ' + server_name + ' as ' + glob_username + '(' + glob_uid + ')'
 		break
 	elif uname_ack_code == 400:
-		print (glob_message_recv[1])
+		print glob_message_recv[1]
 	else:
-		print ('Unexpected Issue. Please try again.')
+		print 'Unexpected Issue. Please try again.'
 ##Join Game 0001
 #Part 1 Auto Join's game 0001
 join_game('0001')
-#info = client_socket.recv(1024)
-#info_decode(info)
-#print (glob_message_recv)
+info = client_socket.recv(1024)
+info_decode(info)
+print glob_message_recv[0]
 
-print ('Thats all for now!')
+print 'Thats all for now!'

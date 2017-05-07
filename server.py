@@ -7,7 +7,8 @@ import optparse
 
 BACKLOG = 5
 
-games = []
+games = [{},{},{},{},{}]
+users = []
 
 def drawBoard(board):
     print('   |   |')
@@ -38,10 +39,9 @@ def isWinner(bo, le):
 def isSpaceFree(board, move):
     return board[move] == ' '
 
-def getPlayerMove(board):
-    move = ' '
-    while move not in '1 2 3 4 5 6 7 8 9'.split() or not isSpaceFree(board, int(move)):
-        move = input()
+def checkValidMove(board, move):
+    if move not in '1 2 3 4 5 6 7 8 9'.split() or not isSpaceFree(board, int(move)):
+        move = -1
     return int(move)
 
 def isBoardFull(board):
@@ -50,9 +50,11 @@ def isBoardFull(board):
             return False
     return True
 
-def newgame(gameId, X, O):
+def newgame(gameid, X, O):
+    games[gameid] = {}
     games[gameid]['board'] = [' '] * 10
     games[gameid]['turn'] = 'X'
+    games[gameid]['turnuid'] = X
     games[gameid]['isPlaying'] = True
     games[gameid]['X'] = X
     games[gameid]['O'] = O
@@ -62,37 +64,45 @@ def move(gameid, move):
     if game['isPlaying']:
         if game['turn'] == 'X':
             #drawBoard(game['board'])
-            move = getPlayerMove(game['board'])
+            move = checkValidMove(game['board'], move)
+            if move == -1:
+                return -1
             makeMove(game['board'], 'X', move)
-
             if isWinner(game['board'], 'X'):
                 #drawBoard(game['board'])
                 print('X won the game')
                 game['isPlaying'] = False
+                return 1
             else:
                 if isBoardFull(game['board']):
                     #drawBoard(game['board'])
                     print('Tie')
-                    break
+                    return 3
                 else:
-                    turn = 'O'
+                    game['turn'] = 'O'
+                    game['turnuid'] = game['O']
+                    return 0
 
         else:
             #drawBoard(game['board'])
-            move = getPlayerMove(game['board'])
+            move = checkValidMove(game['board'], move)
+            if move == -1:
+                return -1
             makeMove(game['board'], 'O', move)
-
             if isWinner(game['board'], 'O'):
                 #drawBoard(game['board'])
                 print('O won the game')
                 game['isPlaying'] = False
+                return 2
             else:
                 if isBoardFull(game['board']):
                     #drawBoard(game['board'])
                     print('Tie')
-                    break
+                    return 3
                 else:
-                    turn = 'X'
+                    game['turn'] = 'X'
+                    game['turnuid'] = game['X']
+                    return 0
     else:
         print("Tried to move in a game that finished")
         # return -1 for invalid, 0 for good in progress, 1 for win, 2 for win
@@ -132,20 +142,58 @@ def serve_forever(host, port):
                 rlist.append(conn)
             else:
                 # read a line that tells us how many bytes to write
-                bytes = sock.recv(1024)
-                print(bytes)
+                bytes = sock.recv(1024).decode()
+                # print(bytes)
                 if not bytes: # connection closed by client
                     sock.close()
                     rlist.remove(sock)
                 else:
-                    print(sock)
-                    print ('Got request to send %s bytes. '
-                           'Sending them all to...' % bytes)
+                    # print(sock)
+                   # print ('Got request to send %s bytes. '
+                    #       'Sending them all to...' % bytes)
                     # send them all
                     # XXX: this is cheating, we should use 'select' and wlist
                     # to determine whether socket is ready to be written to
-                    data = os.urandom(int(bytes))
-                    sock.sendall(data)
+                    # data = os.urandom(int(bytes))
+                    # sock.sendall(data)
+                    info = bytes.split('#')
+                    print(info)
+                    if info[0] == '100':
+                        name = info[1]
+                        if name not in users:
+                            users.append(name)
+                            sock.sendall(('101#' + name).encode())
+                        else:
+                            sock.sendall(('401#').encode())
+                    elif info[0] == '200':
+                        newgame(int(info[2]), info[1], info[1])
+                        sock.sendall(('201#' + info[1] + '#' + info[2]).encode())
+                        #print(('213#' + info[2] + '#' + ''.join(games[int(gameid)]['board']) + '#' + info[1]))
+                        #sock.sendall(('213#' + info[2] + '#' + ''.join(games[int(gameid)]['board']) + '#' + info[1] + '#' + info[1] + '#' + info[1]).encode())
+                        print('213#' + info[2] + '#' + ''.join(games[int(info[2])]['board']) + '#' + games[int(info[2])]['turnuid'] + '#' + games[int(info[2])]['X'] + '#' + games[int(info[2])]['O'])
+                        sock.sendall(('213#' + info[2] + '#' + ''.join(games[int(info[2])]['board']) + '#' + games[int(info[2])]['turnuid'] + '#' + games[int(info[2])]['X'] + '#' + games[int(info[2])]['O']).encode())
+
+                       # if eerror send 408
+                    elif info[0] == '210':
+                        ret = move(int(info[2]), info[3])
+                        if ret == 0 or ret == -1:
+                            print('0 or -1')
+                            sock.sendall(("211#" + info[1] + '#' + info[3]).encode())
+                        elif ret == 1:
+                            print('214#' + info[2] + '#' + 'X Won!')
+                            sock.sendall(('214#' + info[2] + '#' + 'X Won!').encode())
+                        elif ret == 2:
+                            print('2')
+                            sock.sendall(('214#' + info[2] + '#' + 'O Won!').encode())
+                        elif ret == 3:
+                            print('3')
+                            sock.sendall(('214#' + info[2] + '#' + 'Tie!').encode())
+                    elif info[0] == '212':
+                        print('213#' + info[2] + '#' + ''.join(games[int(info[2])]['board']) + '#' + games[int(info[2])]['turnuid'] + '#' + games[int(info[2])]['X'] + '#' + games[int(info[2])]['O'])
+                        sock.sendall(('213#' + info[2] + '#' + ''.join(games[int(info[2])]['board']) + '#' + games[int(info[2])]['turnuid'] + '#' + games[int(info[2])]['X'] + '#' + games[int(info[2])]['O']).encode())
+
+                    else:
+                        sock.sendall(("Not supported rn").encode())
 
 
 def main():
