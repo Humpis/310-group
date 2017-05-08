@@ -2,6 +2,7 @@
 
 import socket
 import sys
+import time
 
 def info_send(socket):
 	#Sends the global send variable out on the socket fed into the variable socket.
@@ -232,10 +233,12 @@ def play_game(rcv_msg):
 	turn = -1
 	uinput = -1
 	glob_gameid = int(rcv_msg[1])
+	prev_boardstate = '=========='
 	boardstate = rcv_msg[2]
 	
 	while (1):
-		display_gamestate(boardstate)
+		if boardstate != prev_boardstate:
+			display_gamestate(boardstate)
 		if rcv_msg[3] == glob_uid:
 		#Grabs the user turn from the server's message, determining if it is the client's turn or
 		#not.
@@ -256,7 +259,10 @@ def play_game(rcv_msg):
 						info = client_socket.recv(1024)
 						info_decode(info)
 						rcv_msg = glob_message_recv
+						prev_boardstate = boardstate
+						print ('My Turn prev_boardstate:' + prev_boardstate)
 						boardstate = rcv_msg[2]
+						print ('My Turn boardstate:' + boardstate)
 					elif glob_message_recv[0] == 214:
 						print (glob_message_recv[2])
 						break
@@ -275,11 +281,17 @@ def play_game(rcv_msg):
 		else:
 			turn = -1
 			print ("It's your opponent's turn. Please wait...")
+			time.sleep(5)
+			glob_message_send = '199#'+glob_uid
+			info_send(client_socket)
 			info = client_socket.recv(1024)
 			info_decode(info)
 			if glob_message_recv[0] == 213:
 				rcv_msg = glob_message_recv
+				prev_boardstate = boardstate
+				print ('Opp Turn prev_boardstate:' + prev_boardstate)
 				boardstate = rcv_msg[2]
+				print ('Opp Turn boardstate:' + boardstate)
 			elif glob_message_recv[0] == 214:
 				print (glob_message_recv[2])
 				break

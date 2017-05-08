@@ -150,7 +150,18 @@ def serve_forever(host, port):
                                     found = True
                                     print('213#' + str(i) + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O'])
                                     sock.sendall(('213#' + str(i) + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O']).encode())
+                                elif game['O'] == info[1] or game['X'] == info[1] and game['isPlaying'] is False:
+                                    found = True
+                                    print('game over')
+                                    if isWinner(game['board'], 'X'):
+                                        sock.sendall(('214#' + info[1] + '#' + 'X Won!').encode())
+                                    elif isWinner(game['board'], 'O'):
+                                        sock.sendall(('214#' + info[1] + '#' + 'O Won!').encode())
+                                    else:
+                                        sock.sendall(('214#' + info[1] + '#' + 'Tie!').encode())
+                                    games[i] = None
                         if not found:
+                            print('game not foumnd')
                             sock.sendall(('198#').encode())
                     elif info[0] == '200':
                         if info[2] not in users:
@@ -197,6 +208,7 @@ def serve_forever(host, port):
                             users[game['X']] = 'availible'
                             users[game['O']] = 'availible'
                             game['isPlaying'] = False
+                            # game['X'] = None
                             # game = None
                             sock.sendall(('214#' + info[2] + '#' + 'X Won!').encode())
                         elif ret == 2:
@@ -205,6 +217,7 @@ def serve_forever(host, port):
                             users[game['X']] = 'availible'
                             users[game['O']] = 'availible'
                             game['isPlaying'] = False
+                            # game['O'] = None
                             # game = None
                             sock.sendall(('214#' + info[2] + '#' + 'O Won!').encode())
                         elif ret == 3:
