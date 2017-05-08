@@ -146,11 +146,11 @@ def serve_forever(host, port):
                         found = False
                         for i, game in enumerate(games):
                             if game is not None:
-                                if game['O'] == info[1] or game['X'] == info[1] and game['isPlaying']:
+                                if (game['O'] == info[1] or game['X'] == info[1]) and game['isPlaying']:
                                     found = True
                                     print('213#' + str(i) + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O'])
                                     sock.sendall(('213#' + str(i) + '#' + ''.join(game['board']) + '#' + game['turnuid'] + '#' + game['X'] + '#' + game['O']).encode())
-                                elif game['O'] == info[1] or game['X'] == info[1] and game['isPlaying'] is False:
+                                elif (game['O'] == info[1] or game['X'] == info[1]) and game['isPlaying'] is False:
                                     found = True
                                     print('game over')
                                     if isWinner(game['board'], 'X'):
